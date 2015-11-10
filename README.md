@@ -5,7 +5,7 @@ sudo apt-get install python-dev
 sudo apt-get install python-twisted
 sudo apt-get install gcc-4.6 X
 
-#Setup Mongo DB
+# Setup Mongo DB
 
 sudo apt-get install python-setuptools
 sudo apt-get install mongodb
