@@ -14,7 +14,7 @@ sudo apt-get install mongodb
 sudo apt-get install python-pip  
 sudo pip install pymongo  
 sudo service mongodb start  
-mongo
+mongo  
 use mysensors  
 db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})  
 
