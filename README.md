@@ -14,6 +14,7 @@ sudo apt-get install mongodb
 sudo apt-get install python-pip  
 sudo pip install pymongo  
 sudo service mongodb start  
+mongo
 use mysensors  
 db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})  
 
@@ -32,4 +33,3 @@ db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})
 ## Share senz
 * From score: SHARE #lat #lon @wasn 
 * From wasn: SHARE #lat #lon @score
-
