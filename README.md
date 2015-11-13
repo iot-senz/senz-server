@@ -21,10 +21,10 @@ db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})
 # Setup with docker
 
 ### Build docker images
-docker build --tag senz/server .  
+docker build --tag senz/senzs .
 
 ### Run dockerize server
-docker run --name senz-server -i -t -p 9090:9090/udp -v /var/log/senz:/var/senz/logs senz/server
+docker run -i -t -p 9090:9090/udp -v /var/log/senz:/var/senz/logs senz/senzs
 
 # Test server and client
 
