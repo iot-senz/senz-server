@@ -25,12 +25,27 @@ from twisted.internet import reactor
 import sys
 import os.path
 import time
+import logging
 
 lib_path = os.path.abspath('utils')
 sys.path.append(lib_path)
 from myParser import *
 from myUser import *
 from myCrypto import *
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# create a file handler
+handler = logging.FileHandler('logs/server.log')
+handler.setLevel(logging.INFO)
+
+# create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# add the handlers to the logger
+logger.addHandler(handler)
 
 #UDP Server port number should be assigned here
 port=9090
@@ -245,11 +260,9 @@ class mySensorUDPServer(DatagramProtocol):
    #Let's send a ping to keep open the port
    def sendPing(self,delay):
        global connections
-       #print connections
        for recipient in connections:
            forward=connections[recipient]
            timeGap=time.time()-connectionsTime[recipient]
-           #print timeGap
            #If there are no activities messages during in an hour, let's close the connection
            if (timeGap<3600):
               self.transport.write("PING",forward)
@@ -261,7 +274,7 @@ class mySensorUDPServer(DatagramProtocol):
 
    #This function is called when we start the protocol
    def startProtocol(self):
-   	print "## SERVER STARTED ##"
+        logger.info("Server started")
         self.sendPing(20)
 
 
@@ -279,7 +292,7 @@ def init():
          f=open(".servername","r")
          serverName = f.readline().rstrip("\n")
    except:
-      print "ERRER: Cannot access the server name file."
+      logger.error("Cannot access server name file")
       raise SystemExit
 
    # Here we will generate public and private keys for the server
@@ -294,7 +307,7 @@ def init():
          cry.generateRSA(1024)
       serverPubkey=cry.loadRSAPubKey()
    except:
-      print "ERRER: Cannot genereate private/public keys for the server."
+      logger.error("Cannot genereate private/public keys for the server.")
       raise SystemExit
 
 
@@ -311,7 +324,7 @@ def main():
        # Access the user collection from the database
        database = db.users
     except:
-       print "ERRER: Cannot aaccess the Mongo database."
+       logger.error("Cannot aaccess the Mongo database.")
        raise SystemExit
 
     reactor.listenUDP(port, mySensorUDPServer())
@@ -319,5 +332,5 @@ def main():
 
 if __name__ == '__main__':
     init()
-    print serverPubkey
+    logger.info(serverPubkey)
     main()

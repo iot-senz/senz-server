@@ -20,6 +20,21 @@
 ###############################################################################
 import sys
 import re
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# create a file handler
+handler = logging.FileHandler('logs/server.log')
+handler.setLevel(logging.INFO)
+
+# create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# add the handlers to the logger
+logger.addHandler(handler)
 
 class myParser:
    """
@@ -27,7 +42,7 @@ class myParser:
     by the Parser and obtained the query parameters.
     Appropriate action will be invoked by the MySensor Sever or Client.
    """
-  
+
    def __init__(self,msg):
       self.users=list()
       self.sensors=list()
@@ -43,8 +58,8 @@ class myParser:
       state='CLEAR'
       sen=""
       commandList=["SHARE","UNSHARE","PUT","GET","DATA"]
-      print msg
-      
+      logger.info(msg)
+
       while tList:
           word=tList.pop(0)
           self.senze+=word
@@ -67,11 +82,9 @@ class myParser:
               if state=='DATA':
                  self.data[sen]=word
                  state='CLEAR'
-          #print word
 
 
    def getUsers(self):
- #     print re.findall(r'(?<=\W)[@]\S*',self.msg)
        return self.users
 
    def getSensors(self):
@@ -114,7 +127,7 @@ testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
 
 for l in testData:
   m= myParser(l)
-  
+
   print "User List: ",m.getUsers()
   print "Sensors: ", m.getSensors()
   print "Data: ", m.getData()
