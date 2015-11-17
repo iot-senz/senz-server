@@ -25,7 +25,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 import time
 
-from base64 import b64encode, b64decode 
+from base64 import b64encode, b64decode
 
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto import Random
@@ -37,13 +37,13 @@ class myCrypto:
   privKeyLoc=""
   key=""
   bs=32
-  
+
   def __init__(self,name):
       self.user=name
       #Set the public and private key locations
       self.pubKeyLoc="."+name+"PubKey.pem"
       self.privKeyLoc="."+name+"PrivKey.pem"
- 
+
   def generateAES(self,pin):
     '''
     Generate 256 bits AES key.
@@ -56,13 +56,13 @@ class myCrypto:
        return True
     except:
          return False
- 
+
   def pad(self, s):
         return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
 
   def unpad(self, s):
         return s[:-ord(s[len(s)-1:])]
-  
+
   def encrypt(self,raw):
       raw = self.pad(raw)
       #iv = Random.new().read(AES.block_size)
@@ -87,50 +87,50 @@ class myCrypto:
     Save private key and public key in files
     openssl pkcs8 -topk8 -inform PEM -outform PEM -in .mysensorsPrivKey.pem -out private.pem -nocrypt
     '''
-    newKey = RSA.generate(bits, e=65537) 
-    publicKey = newKey.publickey().exportKey("PEM") 
-    privateKey = newKey.exportKey("PEM") 
- 
+    newKey = RSA.generate(bits, e=65537)
+    publicKey = newKey.publickey().exportKey("PEM")
+    privateKey = newKey.exportKey("PEM")
+
     try:
        f=open(self.privKeyLoc,'w')
        f.write(privateKey)
        f.close()
-    
+
        f=open(self.pubKeyLoc,'w')
        f.write(publicKey)
        f.close()
        return True
-       
+
     except:
          return False
-    
+
   def signSENZE(self,senze):
     from Crypto.Signature import PKCS1_v1_5
     '''
     param: senze to be signed
     return: senze with base64 encoded signature
     '''
-    key = open(self.privKeyLoc,"r").read() 
+    key = open(self.privKeyLoc,"r").read()
     rsakey = RSA.importKey(key)
     t=time.time()
     senze ='%s #time %s ^%s' %(senze,t,self.user)
     signer = PKCS1_v1_5.new(rsakey)
     digest = SHA256.new("".join(senze.split()))
     sign = signer.sign(digest)
-    senze = '%s %s' %(senze,b64encode(sign))    
+    senze = '%s %s' %(senze,b64encode(sign))
     return senze
- 
-  
+
+
   def signData(self,data):
     from Crypto.Signature import PKCS1_v1_5
     '''
     param: package Data to be signed
     return: base64 encoded signature
     '''
-    key = open(self.privKeyLoc,"r").read() 
-    rsakey = RSA.importKey(key) 
+    key = open(self.privKeyLoc,"r").read()
+    rsakey = RSA.importKey(key)
 
-    signer = PKCS1_v1_5.new(rsakey) 
+    signer = PKCS1_v1_5.new(rsakey)
     digest = SHA256.new(data)
     sign = signer.sign(digest)
     return b64encode(sign)
@@ -138,16 +138,16 @@ class myCrypto:
   def verifySENZE(self,query,publicKey):
     from Crypto.Signature import PKCS1_v1_5
     '''
-    Verifies with a public key from whom the data came that it was indeed 
+    Verifies with a public key from whom the data came that it was indeed
     signed by their private key
     param: public_key
     param: senze
     param: signature String signature to be verified
-    return: Boolean. True if the signaetture is valid; False otherwise. 
+    return: Boolean. True if the signaetture is valid; False otherwise.
     '''
-    rsakey = RSA.importKey(b64decode(publicKey)) 
+    rsakey = RSA.importKey(b64decode(publicKey))
     signer = PKCS1_v1_5.new(rsakey)
-    digest = SHA256.new(query.getSENZE()) 
+    digest = SHA256.new(query.getSENZE())
     # Assumes the data is base64 encoded to begin with
     if signer.verify(digest,b64decode(query.getSignature())):
        return True
@@ -157,16 +157,16 @@ class myCrypto:
   def verifySign(self,publicKey,signature,data):
     from Crypto.Signature import PKCS1_v1_5
     '''
-    Verifies with a public key from whom the data came that it was indeed 
+    Verifies with a public key from whom the data came that it was indeed
     signed by their private key
     param: public_key
     param: signature String signature to be verified
     param: data
-    return: Boolean. True if the signature is valid; False otherwise. 
+    return: Boolean. True if the signature is valid; False otherwise.
     '''
-    rsakey = RSA.importKey(b64decode(publicKey)) 
-    signer = PKCS1_v1_5.new(rsakey) 
-    digest = SHA256.new(data) 
+    rsakey = RSA.importKey(b64decode(publicKey))
+    signer = PKCS1_v1_5.new(rsakey)
+    digest = SHA256.new(data)
     # Assumes the data is base64 encoded to begin with
     if signer.verify(digest,b64decode(signature)):
        return True
@@ -175,19 +175,19 @@ class myCrypto:
 
   def loadRSAPubKey(self):
     '''
-    Reads a public key from the file 
+    Reads a public key from the file
     return: Base64 encoded public key
     '''
     publicKey=""
     #if os.path.isfile(pubKeyLoc):
-    publicKey = open(self.pubKeyLoc,"r").read() 
+    publicKey = open(self.pubKeyLoc,"r").read()
     return b64encode(publicKey)
     #else:
     #   return publicKey
 
   def saveRSAPubKey(self,pubkey):
     '''
-    Saves a public key 
+    Saves a public key
     param: public key
     '''
     try:
@@ -219,9 +219,9 @@ class myCrypto:
     param: package String to be decrypted
     return decrypted string
     '''
-    key = open(self.privKeyLoc, "r").read() 
-    rsakey = RSA.importKey(key) 
-    
+    key = open(self.privKeyLoc, "r").read()
+    rsakey = RSA.importKey(key)
+
     '''
     dsize = SHA.digest_size
     sentinel = Random.new().read(15+dsize)      # Let's assume that average data length is 15
@@ -233,8 +233,8 @@ class myCrypto:
     message = cipher.decrypt(b64decode(package))
     #return b64decode(message)
     return message
-  
-  
+
+
 '''
 test=myCrypto("mysensors")
 test.generateAES("1234hello")

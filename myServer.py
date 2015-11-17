@@ -41,239 +41,251 @@ handler = logging.FileHandler('logs/server.log')
 handler.setLevel(logging.INFO)
 
 # create a logging format
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - \
+                              %(message)s')
 handler.setFormatter(formatter)
 
 # add the handlers to the logger
 logger.addHandler(handler)
 
 #UDP Server port number should be assigned here
-port=9090
+port = 9090
 
 # At present we manage connection in a dictionary.
 # We save connection IP and port along with user/device name
-connections={}
-connectionsTime={}
+connections = {}
+connectionsTime = {}
 
 #These global variables will be used to keep the server name and its public key
-serverName="mysensors"
-serverPubkey=""
+serverName = "mysensors"
+serverPubkey = ""
 #Database connection will be kept in this variable
-database=""
-
+database = ""
 # Here's a UDP version of the simplest possible SENZE protocol
+
+
 class mySensorUDPServer(DatagramProtocol):
+    '''
+    # This method will create a new user at the
+        server based on the following SENZE
+    # SHARE #pubkey PEM_PUBKEY @mysensors #time timeOfRequest
+        ^userName signatureOfTheSenze
+    '''
+    def createUser(self, query, address):
+        global database
+        global serverName
+        global serverPubkey
 
-   # This method will create a new user at the server based on the following SENZE
-   # SHARE #pubkey PEM_PUBKEY @mysensors #time timeOfRequest ^userName signatureOfTheSenze
-   def createUser(self,query,address):
-       global database
-       global serverName
-       global serverPubkey
+        usr = myUser(database, serverName)
+        cry = myCrypto(serverName)
+        data = query.getData()
+        pubkey = ''
+        phone = ''
+        if 'pubkey' in data:
+            pubkey = data['pubkey']
+        if 'phone' in data:
+            phone = data['phone']
+        if cry.verifySENZE(query, pubkey):
+            status = usr.addUser(query.getSender(), phone, query.getSENZE(),
+                                 pubkey, query.getSignature())
+        if status:
+            st = 'DATA #msg UserCreated #pubkey %s ' % (serverPubkey)
+        else:
+            st = 'DATA #msg UserCreationFailed'
+        senze = cry.signSENZE(st)
+        self.transport.write(senze, address)
+    '''
+    # This methid will remove the user
+         at the server based on the following SENZE
+    # UNSHARE #pubkey @mysensors #time timeOfRequest
+         ^userName signatureOfTheSenze
+    '''
+    def removeUser(self, sender, pubkey, address):
+        global database
+        global serverName
 
-       usr=myUser(database,serverName)
-       cry=myCrypto(serverName)
-       data=query.getData()
-       pubkey='';phone='';
-       if 'pubkey' in data: pubkey=data['pubkey']
-       if 'phone' in data: phone= data['phone']
-       if cry.verifySENZE(query,pubkey):
-          status=usr.addUser(query.getSender(),phone,query.getSENZE(),pubkey,query.getSignature())
-       if status:
-             st='DATA #msg UserCreated #pubkey %s ' %(serverPubkey)
-       else:
-             st='DATA #msg UserCreationFailed'
-       senze=cry.signSENZE(st)
-       self.transport.write(senze,address)
+        usr = myUser(database, serverName)
+        cry = myCrypto(serverName)
+        status = usr.delUser(sender, pubkey)
+        st = "DATA #msg "
+        if status:
+            st += 'UserRemoved'
+        else:
+            st += 'UserCannotRemoved'
+        senze = cry.signSENZE(st)
+        self.transport.write(senze, address)
 
-
-   # This methid will remove the user at the server based on the following SENZE
-   # UNSHARE #pubkey @mysensors #time timeOfRequest ^userName signatureOfTheSenze
-   def removeUser(self,sender,pubkey,address):
-       global database
-       global serverName
-
-       usr=myUser(database,serverName)
-       cry=myCrypto(serverName)
-       status=usr.delUser(sender,pubkey)
-       st="DATA #msg "
-       if status:
-             st+='UserRemoved'
-       else:
-             st+='UserCannotRemoved'
-       senze=cry.signSENZE(st)
-       self.transport.write(senze,address)
-
-
-   def shareSensors(self,query):
-       global connections
-       global database
-       global serverName
-       """
-        If query comes 'SHARE #tp @user2 #time t1 ^user1 siganture' from the user1.
+    def shareSensors(self, query):
+        global connections
+        global database
+        global serverName
+        """
+        If query comes 'SHARE #tp @user2 #time t1 ^user1 siganture'
+                                                     from the user1.
         First we need to verify that user2 is available.
-        Then mysensors adds "user2" to the sensor dictionary at user1's document and
+        Then mysensors adds "user2" to the sensor dictionary at
+                                                     user1's document and
         sensor name to the "user1" dictionary at user2's document.
-        Finally it delivers the message SHARE #tp @user2 #time t1 ^user1 signature to user2.
-       """
-       usr=myUser(database,query.getSender())
-       recipients=query.getUsers()
-       for recipient in recipients:
-           if recipient in connections.keys():
-              usr.share(recipient,query.getSensors())
-              forward=connections[recipient]
-              if forward!=0:
-                 self.transport.write(query.getFULLSENZE(),forward)
+        Finally it delivers the message SHARE #tp @user2 #time t1 ^user1
+                                                     signature to user2.
+        """
+        usr = myUser(database, query.getSender())
+        recipients = query.getUsers()
+        for recipient in recipients:
+            if recipient in connections.keys():
+                usr.share(recipient, query.getSensors())
+                forward = connections[recipient]
+                if forward != 0:
+                    self.transport.write(query.getFULLSENZE(), forward)
 
+    def unshareSensors(self, query):
+        global connections
+        global database
+        usr = myUser(database, query.getSender())
+        recipients = query.getUsers()
+        for recipient in recipients:
+            if recipient in connections.keys():
+                usr.unShare(recipient, query.getSensors())
+                forward = connections[recipient]
+                if forward != 0:
+                    self.transport.write(query.getFULLSENZE(), forward)
 
-   def unshareSensors(self,query):
-       global connections
-       global database
-       usr=myUser(database,query.getSender())
-       recipients=query.getUsers()
-       for recipient in recipients:
-           if recipient in connections.keys():
-              usr.unShare(recipient,query.getSensors())
-              forward=connections[recipient]
-              if forward!=0:
-                 self.transport.write(query.getFULLSENZE(),forward)
+    def GETSenze(self, query):
+        global connections
+        global database
+        global serverName
 
+        sender = query.getSender()
+        sensors = query.getSensors()
+        usr = myUser(database, serverName)
+        recipients = query.getUsers()
+        for recipient in recipients:
+            recipientDB = myUser(database, recipient)
+            if 'pubkey' in sensors:
+                #Since mysensors already has public key of it clients,
+                #it responses on behalf of the client.
+                pubkey = recipientDB.loadPublicKey()
+                if pubkey != '':
+                    if sender in connections.keys():
+                        backward = connections[sender]
+                        senze = 'DATA #name %s #pubkey %s' % (recipient,
+                                                              pubkey)
+                        cry = myCrypto(serverName)
+                        senze = cry.signSENZE(senze)
+                        self.transport.write(senze, backward)
+            #Otherwise GET message will forward to the recipients
+            else:
+                if recipient in connections.keys():
+                    forward = connections[recipient]
+                    if forward != 0 and \
+                       recipientDB.isShare(sender, query.getSensors()):
+                        self.transport.write(query.getFULLSENZE(), forward)
 
-   def GETSenze(self,query):
-       global connections
-       global database
-       global serverName
+    def PUTSenze(self, query):
+        global connections
+        global database
 
-       sender=query.getSender()
-       sensors=query.getSensors()
-       usr=myUser(database,serverName)
-       recipients=query.getUsers()
-       for recipient in recipients:
-           recipientDB=myUser(database,recipient)
-           if 'pubkey' in sensors:
-               #Since mysensors already has public key of it clients,
-               #it responses on behalf of the client.
-               pubkey=recipientDB.loadPublicKey()
-               if pubkey!='' :
-                  if sender in connections.keys():
-                     backward=connections[sender]
-                     senze='DATA #name %s #pubkey %s' %(recipient,pubkey)
-                     cry=myCrypto(serverName)
-                     senze=cry.signSENZE(senze)
-                     self.transport.write(senze,backward)
-           #Otherwise GET message will forward to the recipients
-           else:
-               if recipient in connections.keys():
-                  forward=connections[recipient]
-                  if forward!=0 and recipientDB.isShare(sender,query.getSensors()):
-                     self.transport.write(query.getFULLSENZE(),forward)
+        sender = query.getSender()
+        usr = myUser(database, sender)
+        recipients = query.getUsers()
+        #PUT message will forward to the recipients
+        for recipient in recipients:
+            if recipient in connections.keys():
+                recipientDB = myUser(database, recipient)
+                if recipientDB.isShare(sender, query.getSensors()):
+                    forward = connections[recipient]
+                    if forward != 0:
+                        self.transport.write(query.getFULLSENZE(), forward)
 
-   def PUTSenze(self,query):
-       global connections
-       global database
+    def DATASenze(self, query):
+        global connections
+        global database
 
-       sender=query.getSender()
-       usr=myUser(database,sender)
-       recipients=query.getUsers()
-       #PUT message will forward to the recipients
-       for recipient in recipients:
-           if recipient in connections.keys():
-              recipientDB=myUser(database,recipient)
-              if recipientDB.isShare(sender,query.getSensors()):
-                 forward=connections[recipient]
-                 if forward!=0:
-                    self.transport.write(query.getFULLSENZE(),forward)
+        sender = query.getSender()
+        usr = myUser(database, sender)
+        recipients = query.getUsers()
+        sensors = query.getSensors()
+        for recipient in recipients:
+            if recipient in connections.keys():
+                recipientDB = myUser(database, recipient)
+                #DATA msg queries will always deliverd
+                if recipientDB.isAllow(sender, sensors) or "msg" in sensors:
+                    forward = connections[recipient]
+                    if forward != 0:
+                        self.transport.write(query.getFULLSENZE(), forward)
 
+    def datagramReceived(self, datagram, address):
+        global serverName
+        global usrDatabase
 
-   def DATASenze(self,query):
-       global connections
-       global database
+        query = myParser(datagram)
+        recipients = query.getUsers()
+        sender = query.getSender()
+        signature = query.getSignature()
+        data = query.getData()
+        sensors = query.getSensors()
+        cmd = query.getCmd()
 
-       sender=query.getSender()
-       usr=myUser(database,sender)
-       recipients=query.getUsers()
-       sensors=query.getSensors()
-       for recipient in recipients:
-           if recipient in connections.keys():
-              recipientDB=myUser(database,recipient)
-              #DATA msg queries will always deliverd
-              if recipientDB.isAllow(sender,sensors) or "msg" in sensors:
-                 forward=connections[recipient]
-                 if forward!=0:
-                    self.transport.write(query.getFULLSENZE(),forward)
+        validQuery = False
+        cry = myCrypto(serverName)
+        senderDB = myUser(database, sender)
+        pubkey = senderDB.loadPublicKey()
 
+        if cmd == "SHARE" and "pubkey" in sensors and serverName in recipients:
+            #Create a new account
+            self.createUser(query, address)
+            validQuery = True
 
-   def datagramReceived(self, datagram, address):
-       global serverName
-       global usrDatabase
+        elif cmd == "UNSHARE" and "pubkey" in sensors and\
+                serverName in recipients:
+            #Remove the account
+            status = False
+            if pubkey != "":
+                if cry.verifySENZE(query, pubkey):
+                    status = self.removeUser(sender, pubkey, address)
+            validQuery = True
 
-       query=myParser(datagram)
-       recipients=query.getUsers()
-       sender=query.getSender()
-       signature=query.getSignature()
-       data=query.getData()
-       sensors=query.getSensors()
-       cmd=query.getCmd()
+        else:
+            if pubkey != "":
+                if cry.verifySENZE(query, pubkey):
+                    validQuery = True
 
-       validQuery=False
-       cry=myCrypto(serverName)
-       senderDB=myUser(database,sender)
-       pubkey=senderDB.loadPublicKey()
-
-       if cmd=="SHARE" and "pubkey" in sensors and serverName in recipients:
-          #Create a new account
-          self.createUser(query,address)
-          validQuery=True
-
-       elif cmd=="UNSHARE" and "pubkey" in sensors and serverName in recipients:
-          #Remove the account
-          status=False
-          if pubkey !="":
-             if cry.verifySENZE(query,pubkey):
-                status=self.removeUser(sender,pubkey,address)
-          validQuery=True
-
-       else:
-          if pubkey !="":
-             if cry.verifySENZE(query,pubkey):
-                validQuery=True
-
-       if validQuery:
-            connections[sender]=address
-            connectionsTime[sender]=time.time()
-            if cmd=="SHARE":
+        if validQuery:
+            connections[sender] = address
+            connectionsTime[sender] = time.time()
+            if cmd == "SHARE":
                 self.shareSensors(query)
-            elif cmd=="UNSHARE":
+            elif cmd == "UNSHARE":
                 self.unshareSensors(query)
-            elif cmd=="GET":
+            elif cmd == "GET":
                 self.GETSenze(query)
-            elif cmd=="PUT":
+            elif cmd == "PUT":
                 self.PUTSenze(query)
-            elif cmd=="DATA":
+            elif cmd == "DATA":
                 self.DATASenze(query)
 
-       else:
-            senze="DATA #msg SignatureVerificationFailed"
-            senze=cry.signSENZE(senze)
+        else:
+            senze = "DATA #msg SignatureVerificationFailed"
+            senze = cry.signSENZE(senze)
             self.transport.write(senze, address)
 
-   #Let's send a ping to keep open the port
-   def sendPing(self,delay):
-       global connections
-       for recipient in connections:
-           forward=connections[recipient]
-           timeGap=time.time()-connectionsTime[recipient]
-           #If there are no activities messages during in an hour, let's close the connection
-           if (timeGap<3600):
-              self.transport.write("PING",forward)
-           else:
-              connections[recipient]=0
-           #   connectionsTime.pop(recipient,None)
-       reactor.callLater(delay,self.sendPing,delay=delay)
+    #Let's send a ping to keep open the port
+    def sendPing(self, delay):
+        global connections
+        for recipient in connections:
+            forward = connections[recipient]
+            timeGap = time.time() - connectionsTime[recipient]
+            #If there are no activities messages during in an hour,
+            #let's close the connection
+            if (timeGap < 3600):
+                self.transport.write("PING", forward)
+            else:
+                connections[recipient] = 0
+            #   connectionsTime.pop(recipient,None)
+        reactor.callLater(delay, self.sendPing, delay=delay)
 
-
-   #This function is called when we start the protocol
-   def startProtocol(self):
+    #This function is called when we start the protocol
+    def startProtocol(self):
         logger.info("Server started")
         self.sendPing(20)
 
@@ -281,34 +293,36 @@ class mySensorUDPServer(DatagramProtocol):
 def init():
 # If .servername is not there we will read the server name from keyboard
 # else we will get it from .servername file
-   try:
-      if not os.path.isfile(".servername"):
-         serverName=raw_input("Enter the server name:")
-         f=open(".servername",'w')
-         f.write(serverName+'\n')
-         f.close()
-      else:
-         #The server name will be read form the .servername file
-         f=open(".servername","r")
-         serverName = f.readline().rstrip("\n")
-   except:
-      logger.error("Cannot access server name file")
-      raise SystemExit
+    try:
+        if not os.path.isfile(".servername"):
+            serverName = raw_input("Enter the server name:")
+            f = open(".servername", 'w')
+            f.write(serverName + '\n')
+            f.close()
+        else:
+            #The server name will be read form the .servername file
+            f = open(".servername", "r")
+            serverName = f.readline().rstrip("\n")
+    except:
+        logger.error("Cannot access server name file")
+        raise SystemExit
 
-   # Here we will generate public and private keys for the server
-   # These keys will be used to authentication
-   # If keys are not available yet
-   global serverPubkey
-   try:
-      cry=myCrypto(serverName)
-      if not os.path.isfile(cry.pubKeyLoc):
-         # Generate or loads an RSA keypair with an exponent of 65537 in PEM format
-         # Private key and public key was saved in the .servernamePriveKey and .servernamePubKey files
-         cry.generateRSA(1024)
-      serverPubkey=cry.loadRSAPubKey()
-   except:
-      logger.error("Cannot genereate private/public keys for the server.")
-      raise SystemExit
+    # Here we will generate public and private keys for the server
+    # These keys will be used to authentication
+    # If keys are not available yet
+    global serverPubkey
+    try:
+        cry = myCrypto(serverName)
+        #print os.path.abspath('')
+        if not os.path.isfile(cry.pubKeyLoc):
+
+            # Private key and public key was saved in the
+            #           .servernamePriveKey and .servernamePubKey files
+            cry.generateRSA(1024)
+        serverPubkey = cry.loadRSAPubKey()
+    except:
+        logger.error("Cannot genereate private/public keys for the server.")
+        raise SystemExit
 
 
 def main():
@@ -317,15 +331,15 @@ def main():
 
     #Create connection to the Mongo DB
     try:
-       client = MongoClient('dev.localhost', 27017)
-       #Creating the database for the server
-       db = client[serverName]
-       collection = db['users']
-       # Access the user collection from the database
-       database = db.users
+        client = MongoClient('localhost', 27017)
+        #Creating the database for the server
+        db = client[serverName]
+        collection = db['users']
+        # Access the user collection from the database
+        database = db.users
     except:
-       logger.error("Cannot aaccess the Mongo database.")
-       raise SystemExit
+        logger.error("Cannot aaccess the Mongo database.")
+        raise SystemExit
 
     reactor.listenUDP(port, mySensorUDPServer())
     reactor.run()
