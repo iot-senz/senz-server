@@ -1,21 +1,21 @@
 ###############################################################################
 ##
-##  Senze parser for My Senosr Server/Client v0.01
-##  @Copyright 2014 MySensors Research Project
-##  SCoRe Lab (www.scorelab.org)
-##  University of Colombo School of Computing
-##
-##  Licensed under the Apache License, Version 2.0 (the "License");
-##  you may not use this file except in compliance with the License.
-##  You may obtain a copy of the License at
-##
-##      http://www.apache.org/licenses/LICENSE-2.0
-##
-##  Unless required by applicable law or agreed to in writing, software
-##  distributed under the License is distributed on an "AS IS" BASIS,
-##  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-##  See the License for the specific language governing permissions and
-##  limitations under the License.
+#  Senze parser for My Senosr Server/Client v0.01
+#  @Copyright 2014 MySensors Research Project
+#  SCoRe Lab (www.scorelab.org)
+#  University of Colombo School of Computing
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 ##
 ###############################################################################
 import sys
@@ -30,87 +30,95 @@ handler = logging.FileHandler('logs/server.log')
 handler.setLevel(logging.INFO)
 
 # create a logging format
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - \
+  %(message)s')
 handler.setFormatter(formatter)
 
 # add the handlers to the logger
 logger.addHandler(handler)
 
+
 class myParser:
-   """
-    Incoming messages from websockets will be parsed
-    by the Parser and obtained the query parameters.
-    Appropriate action will be invoked by the MySensor Sever or Client.
-   """
+    """
+     Incoming messages from websockets will be parsed
+     by the Parser and obtained the query parameters.
+     Appropriate action will be invoked by the MySensor Sever or Client.
+    """
 
-   def __init__(self,msg):
-      self.users=list()
-      self.sensors=list()
-      self.command=""
-      self.data={}
-      self.sender=""
-      self.signature=""
-      self.senze=""
-      self.fullSenze=""
+    def __init__(self, msg):
+        self.users = list()
+        self.sensors = list()
+        self.command = ""
+        self.data = {}
+        self.sender = ""
+        self.signature = ""
+        self.senze = ""
+        self.fullSenze = ""
 
-      self.fullSenze=msg
-      tList=msg.split()
-      state='CLEAR'
-      sen=""
-      commandList=["SHARE","UNSHARE","PUT","GET","DATA"]
-      logger.info(msg)
+        self.fullSenze = msg
+        tList = msg.split()
+        state = 'CLEAR'
+        sen = ""
+        commandList = ["SHARE", "UNSHARE", "PUT", "GET", "DATA"]
+        logger.info(msg)
 
-      while tList:
-          word=tList.pop(0)
-          self.senze+=word
+        while tList:
+            word = tList.pop(0)
+            self.senze += word
 
-          if word.upper() in commandList:
-             self.command=word
-          elif word.startswith("#"):
-             sen=word[1:]
-             if not sen in self.sensors:
-                self.sensors.append(sen)
-             state='DATA'
-          elif word.startswith("@"):
-             usr=word[1:]
-             if not usr in self.users:
-                self.users.append(word[1:])
-          elif word.startswith("^"):
-             self.sender=word[1:]
-             self.signature=tList.pop(0)
-          else:
-              if state=='DATA':
-                 self.data[sen]=word
-                 state='CLEAR'
+            if word.upper() in commandList:
+                self.command = word
+            elif word.startswith("#"):
+                sen = word[1:]
+                if sen not in self.sensors:
+                    self.sensors.append(sen)
+                state = 'DATA'
+            elif word.startswith("@"):
+                usr = word[1:]
+                if usr not in self.users:
+                    self.users.append(word[1:])
+            elif word.startswith("^"):
+                self.sender = word[1:]
+                self.signature = tList.pop(0)
+            else:
+                if state == 'DATA':
+                    self.data[sen] = word
+                    state = 'CLEAR'
 
+    def getUsers(self):
+        return self.users
 
-   def getUsers(self):
-       return self.users
+    def getSensors(self):
+        return self.sensors
 
-   def getSensors(self):
-       return self.sensors
+    def getData(self):
+        return self.data
 
-   def getData(self):
-       return self.data
+    def getCmd(self):
+        return self.command
 
-   def getCmd(self):
-       return self.command
+    def getSender(self):
+        return self.sender
 
-   def getSender(self):
-       return self.sender
+    def getSENZE(self):
+        return self.senze
 
-   def getSENZE(self):
-       return self.senze
+    def getFULLSENZE(self):
+        return self.fullSenze
 
-   def getFULLSENZE(self):
-       return self.fullSenze
-
-   def getSignature(self):
-       return self.signature
+    def getSignature(self):
+        return self.signature
 '''
-#testData=["SHARE #pubkey LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FDbit1eVpzcXIxeS93Y2hjTkh1MzducE5RSwpSRHFBOTl6REkxeUtzOTFLNUJvNWFKWG1qOXc2cUJwdnVPdkNZQUxHcEdXVC9NUm1Ka3pLOGZUclJhVFlyY1ZMCkJsbklkMXVneWUzZDJFM3lBRFREZlNWWGlOZXpKS2MrSkErN0ExV25FZ0tacXB6ZmYvalNhZXgrR25YcWZ5d0cKeVQvR201QnhwdTc2SXFkYU9RSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ== @mysensors ^home0 iT4zN85/JNaWiDw56gLqYFDpf6dwkfUOIkP/QlGvLOz4PF7KgJOhefEfH8xQXBmLQAOq3blIVuHIZC55CqTFevfovLcy4Ff42VEFAqMqj42Z3cmoApxgU6tzs/V5BjlrmQAry2TGQ0Qx18uqJANjuyvxMTMMwpiWRK1GM5jZch4="]
+#testData = ["SHARE #pubkey LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3\
+FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FDbit1eVpzcXIxeS93Y2hjTkh1MzducE5RSwpSRHFBO\
+Tl6REkxeUtzOTFLNUJvNWFKWG1qOXc2cUJwdnVPdkNZQUxHcEdXVC9NUm1Ka3pLOGZUclJhVFlyY1ZM\
+CkJsbklkMXVneWUzZDJFM3lBRFREZlNWWGlOZXpKS2MrSkErN0ExV25FZ0tacXB6ZmYvalNhZXgrR25\
+YcWZ5d0cKeVQvR201QnhwdTc2SXFkYU9RSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ = \
+=  @mysensors ^home0 iT4zN85/JNaWiDw56gLqYFDpf6dwkfUOIkP/QlGvLOz4PF7KgJOhefEfH\
+8xQXBmLQAOq3blIVuHIZC55CqTFevfovLcy4Ff42VEFAqMqj42Z3cmoApxgU6tzs/V5BjlrmQAry2TGQ\
+0Qx18uqJANjuyvxMTMMwpiWRK1GM5jZch4 = "]
 
-testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
+testData = ["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
 "DATA #msg ErrorCode @home0 #time t3 ^mysensors XXXXXXXXX",
 "DATA #time t1 @mysensors ^kasun YYYYYY",
 "SHARE #pubkey XXXXXXX #time t1 @home0 ^kasun yyyyyyyyyy",
@@ -126,7 +134,7 @@ testData=["SHARE #pubkey XXXXXXX #time t1 @mysensors ^kasun yyyyyyyyyy",
 "GET #cipher xxxlatlon @kasun #time t3 ^home0 XXXXXXXXX"]
 
 for l in testData:
-  m= myParser(l)
+  m =  myParser(l)
 
   print "User List: ",m.getUsers()
   print "Sensors: ", m.getSensors()
