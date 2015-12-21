@@ -27,11 +27,9 @@ import os.path
 import time
 import logging
 
-lib_path = os.path.abspath('utils')
-sys.path.append(lib_path)
-from myParser import *
-from myUser import *
-from myCrypto import *
+from utils.myParser import *
+from utils.myUser import *
+from utils.myCrypto import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -176,7 +174,8 @@ class mySensorUDPServer(DatagramProtocol):
             else:
                 if recipient in connections.keys():
                     forward = connections[recipient]
-                    if forward != 0 and recipientDB.isShare(sender, query.getSensors()):
+                    if (forward != 0 and
+                            recipientDB.isShare(sender, query.getSensors())):
                         self.transport.write(query.getFULLSENZE(), forward)
 
     def PUTSenze(self, query):
@@ -234,7 +233,8 @@ class mySensorUDPServer(DatagramProtocol):
             self.createUser(query, address)
             validQuery = True
 
-        elif cmd == "UNSHARE" and "pubkey" in sensors and serverName in recipients:
+        elif (cmd == "UNSHARE" and
+                "pubkey" in sensors and serverName in recipients):
             # Remove the account
             status = False
             if pubkey != "":
@@ -311,8 +311,10 @@ def init():
     try:
         cry = myCrypto(serverName)
         if not os.path.isfile(cry.pubKeyLoc):
-            # Generate or loads an RSA keypair with an exponent of 65537 in PEM format
-            # Private key and public key was saved in the .servernamePriveKey and .servernamePubKey files
+            # Generate or loads an RSA keypair with an exponent of 65537
+            # in PEM format
+            # Private key and public key was saved in the .servernamePriveKey
+            # and .servernamePubKey files
             cry.generateRSA(1024)
         serverPubkey = cry.loadRSAPubKey()
     except:
