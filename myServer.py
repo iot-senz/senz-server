@@ -50,7 +50,7 @@ logger.addHandler(handler)
 
 #UDP Server port number should be assigned here
 port = 9090
-
+deregistered
 # At present we manage connection in a dictionary.
 # We save connection IP and port along with user/device name
 connections = {}
@@ -88,6 +88,8 @@ class mySensorUDPServer(DatagramProtocol):
         if cry.verifySENZE(query, pubkey):
             status = usr.addUser(query.getSender(), phone, query.getSENZE(),
                                  pubkey, query.getSignature())
+        if not cry.verifySENZE(query, pubkey):
+            print("not verified")
         if status:
             st = 'DATA #msg UserCreated #pubkey %s ' % (serverPubkey)
         else:
@@ -231,6 +233,8 @@ class mySensorUDPServer(DatagramProtocol):
         senderDB = myUser(database, sender)
         pubkey = senderDB.loadPublicKey()
 
+        logger.info('hooo %s' % pubkey)
+
         if cmd == "SHARE" and "pubkey" in sensors and serverName in recipients:
             #Create a new account
             self.createUser(query, address)
@@ -247,6 +251,7 @@ class mySensorUDPServer(DatagramProtocol):
 
         else:
             if pubkey != "":
+                logger.error("non Empry pubkey.")
                 if cry.verifySENZE(query, pubkey):
                     validQuery = True
 
@@ -331,7 +336,7 @@ def main():
 
     #Create connection to the Mongo DB
     try:
-        client = MongoClient('localhost', 27017)
+        client = MongoClient('dev.localhost', 27017)
         #Creating the database for the server
         db = client[serverName]
         collection = db['users']
