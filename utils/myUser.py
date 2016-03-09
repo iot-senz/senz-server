@@ -34,10 +34,10 @@ class myUser:
    """ All database related operations are here
         putUser    - Check the availability of a user name and create it
         delUser    - Remove the given user
-        login      - Read the pin/public key and handle the login 
+        login      - Read the pin/public key and handle the login
         Share      - Sharing the sensors
         UnShare    - remove the share
-        
+
    """
    def __init__(self,db,name):
        #Set the pointers to the database and user document
@@ -48,18 +48,26 @@ class myUser:
            self.usrDoc=doc
        else:
           doc=""
-   
+
    def addUser(self,name,phone,senze,pubkey,signature):
+       # find user with same useraname and pubkey
+       doc=self.database.find_one({"name":name,"pubkey":pubkey})
+       if(doc):
+          #if user name is already taken
+          # means send registartion senz by already registerd user
+          return 'REGISTERED'
+
+       # find user with same username
        doc=self.database.find_one({"name":name})
        if(doc):
           #if user name is already taken
-          return False
+          return 'FAIL'
        else:
           #The system support public key based authentication.
           #It saves public key
           user = {"name":name,"phone":phone,"senze":senze,"pubkey":pubkey,"signature":signature}
           post_id = self.database.insert(user)
-          return True
+          return 'DONE'
 
    def delUser(self,name,pubkey):
        #Owners can remove himself
@@ -72,7 +80,7 @@ class myUser:
        else:
           post_id=self.database.remove({"name":name,"pubkey":pubkey})
           return True
-  
+
    def findUsers(self,u):
        friends=[]
        users=u.split(',')
@@ -89,11 +97,11 @@ class myUser:
    def login(self,key,sig,server):
        #doc=db.find_one({"name":self.name,"skey":key})
        if(self.usrDoc):
-           #PIN is compared with hash of the key 
+           #PIN is compared with hash of the key
            if 'skey' in self.usrDoc:
               s = hashlib.sha1()
               s.update(key)
-              key=b64encode(s.digest())  
+              key=b64encode(s.digest())
               if self.usrDoc['skey']==key:
                  return True
            #Hash key is sent
@@ -101,7 +109,7 @@ class myUser:
               hkey=self.usrDoc['hkey']
               s = hashlib.sha1()
               s.update(hkey+sig)
-              tkey=b64encode(s.digest())  
+              tkey=b64encode(s.digest())
               if tkey==key:
                  return True
            #Signature will be verified with the public key
@@ -110,14 +118,14 @@ class myUser:
                if cry.verifySign(self.usrDoc['publickey'],sig,key):
                   return True
        return False
-  
+
    def loadPublicKey(self):
        if(self.usrDoc):
           if 'pubkey' in self.usrDoc:
              s=self.usrDoc['pubkey']
              return str(s)
        return ''
- 
+
    def loadFriends(self,sensor):
        friends=[]
        if(self.usrDoc):
@@ -128,14 +136,14 @@ class myUser:
                  if sensor in sensors:
                     friends.append(name)
        return str(','.join(friends))
-  
+
    def loadData(self,name):
        if(self.usrDoc):
           if name in self.usrDoc:
              s=self.usrDoc[name]
              return str(','.join(s))
        return ''
-  
+
    def logout(self):
        #This will call when user logout
        if(self.usrDoc):
@@ -148,14 +156,14 @@ class myUser:
    the sensor array in the user dictionary.
    It also add the sensor name to the recipient array in
    the recipient dictionary.
-   """ 
+   """
    def share(self,recipient,sensors):
-       # User should loged 
+       # User should loged
        if not (self.usrDoc): return False
        # Recipient should be available
        doc=self.database.find_one({"name":recipient})
        if not doc: return False
-       
+
        for sensor in sensors:
            #Check the sensor is already in the shared list
            if not self.isShare(recipient,[sensor]):
@@ -164,7 +172,7 @@ class myUser:
                  self.usrDoc[sensor].append(recipient)
               else:
                  self.usrDoc[sensor]=[recipient]
-                 
+
            #Tag recipient document
            # Check that user was shared anything else
            if self.name in doc.keys():
@@ -176,46 +184,46 @@ class myUser:
        post_id = self.database.save(doc)
        post_id = self.database.save(self.usrDoc)
        return True
-  
-  
+
+
    """
    Following function will remove recipient names from
    the sensor array in the user dictionary.
    It also remove the sensor name from the recipient array in
    the recipient dictionary
-   """ 
+   """
    def unShare(self,recipient,sensors):
-       # User must be loged 
+       # User must be loged
        if not (self.usrDoc): return False
        # Recipient should available
        doc=self.database.find_one({"name":recipient})
        if not doc: return False
-      
+
        for sensor in sensors:
            #Check that the logged user was shared a sensor
            #If so remove recipient name from the senor dictionary
            if self.isShare(recipient,[sensor]):
               self.usrDoc[sensor].remove(recipient)
-        
+
               #Remove shared tag from recipient document
               # Check that user was shared anything else
               if self.name in doc.keys():
                  if sensor in doc[self.name]:
                     doc[self.name].remove(sensor)
-           
+
            #Check that the recipient was shared a sensor
-           #If so remove the sensor name from the recipient dictionary 
+           #If so remove the sensor name from the recipient dictionary
            if self.isAllow(recipient,[sensor]):
               #print self.usrDoc[recipient]
               self.usrDoc[recipient].remove(sensor)
-              
+
               #Remove shared tag from recipient document
               # Check that user was shared anything else
               if sensor in doc.keys():
                  if self.name in doc[sensor]:
                     #print doc[sensor]
                     doc[sensor].remove(self.name)
-               
+
        post_id = self.database.save(doc)
        post_id = self.database.save(self.usrDoc)
        return True
@@ -225,20 +233,20 @@ class myUser:
        for sensor in sensors:
            if not sensor in self.usrDoc.keys(): return False
            if not recipient in self.usrDoc[sensor]: return False
-       return True 
-       
+       return True
+
    def isAllow(self,sender,sensors):
        if not (self.usrDoc): return False
        if not sender in self.usrDoc.keys(): return False
-       for sensor in sensors:    
+       for sensor in sensors:
            if not sensor in self.usrDoc[sender]: return False
-       return True 
-   
+       return True
+
    def countDocs(self):
        if not (self.usrDoc): return False
-       return self.database.find().count() 
+       return self.database.find().count()
 
-  
+
 '''
 #Create connection to the Mongo DB
 client = MongoClient('localhost', 27017)

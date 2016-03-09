@@ -50,7 +50,6 @@ logger.addHandler(handler)
 
 #UDP Server port number should be assigned here
 port = 9090
-deregistered
 # At present we manage connection in a dictionary.
 # We save connection IP and port along with user/device name
 connections = {}
@@ -81,19 +80,25 @@ class mySensorUDPServer(DatagramProtocol):
         data = query.getData()
         pubkey = ''
         phone = ''
+        reg_status = ''
         if 'pubkey' in data:
             pubkey = data['pubkey']
         if 'phone' in data:
             phone = data['phone']
         if cry.verifySENZE(query, pubkey):
-            status = usr.addUser(query.getSender(), phone, query.getSENZE(),
+            reg_status = usr.addUser(query.getSender(), phone, query.getSENZE(),
                                  pubkey, query.getSignature())
-        if not cry.verifySENZE(query, pubkey):
-            print("not verified")
-        if status:
-            st = 'DATA #msg UserCreated #pubkey %s ' % (serverPubkey)
+            print('-----------------------------------------')
+            print(reg_status)
+            print('-----------------------------------------')
+
+        print(reg_status)
+        if reg_status == 'REGISTERED':
+            st = 'DATA #msg ALREADY_REGISTERED #pubkey %s ' % (serverPubkey)
+        elif reg_status == 'DONE':
+            st = 'DATA #msg REGISTRATION_DONE #pubkey %s ' % (serverPubkey)
         else:
-            st = 'DATA #msg UserCreationFailed'
+            st = 'DATA #msg REGISTRATION_FAIL'
         senze = cry.signSENZE(st)
         self.transport.write(senze, address)
     '''
@@ -184,6 +189,7 @@ class mySensorUDPServer(DatagramProtocol):
                         self.transport.write(query.getFULLSENZE(), forward)
 
     def PUTSenze(self, query):
+        print('put---')
         global connections
         global database
 
@@ -193,11 +199,20 @@ class mySensorUDPServer(DatagramProtocol):
         #PUT message will forward to the recipients
         for recipient in recipients:
             if recipient in connections.keys():
+                print('have recipient')
                 recipientDB = myUser(database, recipient)
                 if recipientDB.isShare(sender, query.getSensors()):
+                    print('shared')
                     forward = connections[recipient]
                     if forward != 0:
+                        print('forward')
                         self.transport.write(query.getFULLSENZE(), forward)
+                    else:
+                        print('not forward')
+                else:
+                    print('not shared')
+            else:
+                print('no recipient')
 
     def DATASenze(self, query):
         global connections
