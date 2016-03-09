@@ -84,10 +84,8 @@ class myUser:
    def findUsers(self,u):
        friends=[]
        users=u.split(',')
-       #print users
        for user in users:
            doc=self.database.find_one({"name":user})
-           #print user
            if doc:
               if user not in friends:
                  friends.append(user)
@@ -214,14 +212,12 @@ class myUser:
            #Check that the recipient was shared a sensor
            #If so remove the sensor name from the recipient dictionary
            if self.isAllow(recipient,[sensor]):
-              #print self.usrDoc[recipient]
               self.usrDoc[recipient].remove(sensor)
 
               #Remove shared tag from recipient document
               # Check that user was shared anything else
               if sensor in doc.keys():
                  if self.name in doc[sensor]:
-                    #print doc[sensor]
                     doc[sensor].remove(self.name)
 
        post_id = self.database.save(doc)

@@ -41,8 +41,8 @@ handler = logging.FileHandler('logs/server.log')
 handler.setLevel(logging.INFO)
 
 # create a logging format
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - \
-                              %(message)s')
+formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s')
+
 handler.setFormatter(formatter)
 
 # add the handlers to the logger
@@ -88,11 +88,9 @@ class mySensorUDPServer(DatagramProtocol):
         if cry.verifySENZE(query, pubkey):
             reg_status = usr.addUser(query.getSender(), phone, query.getSENZE(),
                                  pubkey, query.getSignature())
-            print('-----------------------------------------')
-            print(reg_status)
-            print('-----------------------------------------')
 
-        print(reg_status)
+        logger.info('Registration status: %s' % reg_status)
+
         if reg_status == 'REGISTERED':
             st = 'DATA #msg ALREADY_REGISTERED #pubkey %s ' % (serverPubkey)
         elif reg_status == 'DONE':
@@ -143,7 +141,10 @@ class mySensorUDPServer(DatagramProtocol):
                 usr.share(recipient, query.getSensors())
                 forward = connections[recipient]
                 if forward != 0:
+                    logger.info('Forward senz to: %s' % recipient)
                     self.transport.write(query.getFULLSENZE(), forward)
+                else:
+                    logger.error('Not recipient found : %s' % recipient)
 
     def unshareSensors(self, query):
         global connections
@@ -187,9 +188,12 @@ class mySensorUDPServer(DatagramProtocol):
                     if forward != 0 and \
                        recipientDB.isShare(sender, query.getSensors()):
                         self.transport.write(query.getFULLSENZE(), forward)
+                    else:
+                        logger.error('Senz not shared with recipient: %s' % recipient)
+                else:
+                    logger.error('No recipient found: %s' % recipient)
 
     def PUTSenze(self, query):
-        print('put---')
         global connections
         global database
 
@@ -199,20 +203,15 @@ class mySensorUDPServer(DatagramProtocol):
         #PUT message will forward to the recipients
         for recipient in recipients:
             if recipient in connections.keys():
-                print('have recipient')
                 recipientDB = myUser(database, recipient)
                 if recipientDB.isShare(sender, query.getSensors()):
-                    print('shared')
                     forward = connections[recipient]
                     if forward != 0:
-                        print('forward')
                         self.transport.write(query.getFULLSENZE(), forward)
                     else:
-                        print('not forward')
+                        logger.error('No recipient found: %s' % recipient)
                 else:
-                    print('not shared')
-            else:
-                print('no recipient')
+                    logger.error('Senz not share with recipient: %s' % recipient)
 
     def DATASenze(self, query):
         global connections
@@ -230,10 +229,16 @@ class mySensorUDPServer(DatagramProtocol):
                     forward = connections[recipient]
                     if forward != 0:
                         self.transport.write(query.getFULLSENZE(), forward)
+                    else:
+                        logger.error('No recipient found: %s' % recipient)
+                else:
+                    logger.error('Senz not shared with : %s' % recipient)
 
     def datagramReceived(self, datagram, address):
         global serverName
         global usrDatabase
+
+        logger.info('senz received:  %s' % datagram)
 
         query = myParser(datagram)
         recipients = query.getUsers()
@@ -247,8 +252,6 @@ class mySensorUDPServer(DatagramProtocol):
         cry = myCrypto(serverName)
         senderDB = myUser(database, sender)
         pubkey = senderDB.loadPublicKey()
-
-        logger.info('hooo %s' % pubkey)
 
         if cmd == "SHARE" and "pubkey" in sensors and serverName in recipients:
             #Create a new account
@@ -266,7 +269,6 @@ class mySensorUDPServer(DatagramProtocol):
 
         else:
             if pubkey != "":
-                logger.error("non Empry pubkey.")
                 if cry.verifySENZE(query, pubkey):
                     validQuery = True
 
@@ -333,7 +335,6 @@ def init():
     global serverPubkey
     try:
         cry = myCrypto(serverName)
-        #print os.path.abspath('')
         if not os.path.isfile(cry.pubKeyLoc):
 
             # Private key and public key was saved in the
