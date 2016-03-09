@@ -24,7 +24,10 @@ db.users.insert({name:"kasun",skey:"11234",phone:"0773832923"})
 docker build --tag senz/senzs .
 
 ### Run dockerize server
-docker run -i -t -p 9090:9090/udp -v /var/log/senz:/var/senz/logs senz/senzs
+```
+docker build --tag senz/switch .
+docker run -it -p 9090:9090/udp -v /Users/eranga/sdbl/switch/logs:/app/senz/logs senz/switch
+```
 
 # Test server and client
 
