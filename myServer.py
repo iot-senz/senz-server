@@ -297,9 +297,9 @@ class mySensorUDPServer(DatagramProtocol):
         for recipient in connections:
             forward = connections[recipient]
             timeGap = time.time() - connectionsTime[recipient]
-            #If there are no activities messages during in an hour,
+            #If there are no activities messages during in an hour * 24 (day),
             #let's close the connection
-            if (timeGap < 3600):
+            if (timeGap < 3600 * 24):
                 self.transport.write("PING", forward)
             else:
                 connections[recipient] = 0
