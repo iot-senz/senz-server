@@ -134,11 +134,18 @@ class mySensorUDPServer(DatagramProtocol):
         Finally it delivers the message SHARE #tp @user2 #time t1 ^user1
                                                      signature to user2.
         """
-        usr = myUser(database, query.getSender())
+        sender = myUser(database, query.getSender())
+
         recipients = query.getUsers()
         for recipient in recipients:
             if recipient in connections.keys():
-                usr.share(recipient, query.getSensors())
+                sender.share(recipient, query.getSensors())
+
+                logger.info('Sharing senz to: %s' % query.getSender())
+                logger.info('Sharing senz from: %s' % recipient)
+
+                logger.info('______SHARED______')
+
                 forward = connections[recipient]
                 if forward != 0:
                     logger.info('Forward senz to: %s' % recipient)
@@ -352,14 +359,16 @@ def main():
 
     #Create connection to the Mongo DB
     try:
-        client = MongoClient('dev.localhost', 27017)
+        logger.info("accessing database.---")
+        mongo_host = os.environ.get('MONGO_HOST', 'dev.localhost')
+        client = MongoClient(mongo_host, 27017)
         #Creating the database for the server
         db = client[serverName]
         collection = db['users']
         # Access the user collection from the database
         database = db.users
-    except:
-        logger.error("Cannot aaccess the Mongo database.")
+    except Exception:
+        logger.info("Cannot aaccess the Mongo database.")
         raise SystemExit
 
     reactor.listenUDP(port, mySensorUDPServer())

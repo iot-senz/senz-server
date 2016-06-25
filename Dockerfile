@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:14.04
 
 MAINTAINER Eranga Bandara (erangaeb@gmail.com)
 
@@ -13,6 +13,9 @@ RUN sudo apt-get install -y python-twisted
 # Install pip and packages
 RUN easy_install pip
 RUN pip install pymongo
+
+# Set envirounment variables
+ENV MONGO_HOST dev.localhost
 
 # Copy files 
 ADD . /app/senz
