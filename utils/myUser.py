@@ -43,6 +43,8 @@ class myUser:
        #Set the pointers to the database and user document
        self.database=db
        self.name=name
+       print name
+       print self.database
        doc=self.database.find_one({"name":self.name})
        if(doc):
            self.usrDoc=doc
@@ -242,25 +244,30 @@ class myUser:
        if not (self.usrDoc): return False
        return self.database.find().count()
 
-
 '''
 #Create connection to the Mongo DB
 client = MongoClient('localhost', 27017)
 #Creating the database
 
-db = client['mysensors']
-collection = db['users']
+db = client['senz']
+collection = db['senzies']
 # Access the user collection from the mysensors database
-usrDB = db.users
-usr=myUser(usrDB,'d2')
-#print usr.countDocs()
+#usrDB = db.senzies
+usrDB=collection
+usr=myUser(usrDB,'Eranga')
+#usr.addUser('kasun','11111','aaaaaaaaaaaaaa','XXXXXX','sssss')
+#usr.addUser('Eranga','11111','aaaaaaaaaaaaaa','pppp','sssss')
+#rep=usr.loadData('kasun')
+#print rep['name']
+
 #f=usr.loadFriends('tp')
 #print f
-f=usr.findUsers('d2,d1,kasun,device1,nimal,d3')
-print f
+#f=usr.findUsers('d2,d1,kasun,device1,nimal,d3')
+#print f
 
-rep=usr.loadData('name')
+#rep=usr.loadData('name')
 pub=usr.loadPublicKey()
 print pub
-print rep
+#print rep
+
 '''

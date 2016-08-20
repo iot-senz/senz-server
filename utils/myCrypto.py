@@ -30,6 +30,7 @@ from base64 import b64encode, b64decode
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto import Random
 import os.path
+import sys
 
 class myCrypto:
   user=""
@@ -40,9 +41,15 @@ class myCrypto:
 
   def __init__(self,name):
       self.user=name
+
+      keyspath = os.environ.get('KEYS_DIR','../.keys')
+      # Keys will be stored in the keys directory
+      if not os.path.exists(keyspath):
+          #create keys directory
+          os.makedirs(keyspath)
       #Set the public and private key locations
-      self.pubKeyLoc="."+name+"PubKey.pem"
-      self.privKeyLoc="."+name+"PrivKey.pem"
+      self.pubKeyLoc=keyspath+"/id_rsa.pub"
+      self.privKeyLoc=keyspath+"/id_rsa"
 
   def generateAES(self,pin):
     '''
@@ -135,7 +142,7 @@ class myCrypto:
     sign = signer.sign(digest)
     return b64encode(sign)
 
-  def verifySENZE(self,query,publicKey):
+  def verifySENZE(self,senz,publicKey):
     from Crypto.Signature import PKCS1_v1_5
     '''
     Verifies with a public key from whom the data came that it was indeed
@@ -147,9 +154,9 @@ class myCrypto:
     '''
     rsakey = RSA.importKey(b64decode(publicKey))
     signer = PKCS1_v1_5.new(rsakey)
-    digest = SHA256.new(query.getSENZE())
+    digest = SHA256.new(senz.getSENZE())
     # Assumes the data is base64 encoded to begin with
-    if signer.verify(digest,b64decode(query.getSignature())):
+    if signer.verify(digest,b64decode(senz.getSignature())):
        return True
     else:
        return False

@@ -1,0 +1,17 @@
+#Switch infomation
+
+[switch]
+#switch-uri=udp.mysensors.info
+#switch-uri=192.168.1.102
+switch-uri=localhost
+port=9090
+switch-name=senzswitch
+
+[database]
+db-host="localhost"
+db-port=27017
+db-name="senz"
+db-collections="senzies"
+
+[senz]
+boot=SHARE #gpio12 #gpio13 #photo #msg @y
